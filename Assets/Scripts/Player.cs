@@ -15,14 +15,47 @@ public class Player : MonoBehaviour
     private bool isWalking;
     private Vector3 lastInteractDir;
 
-
+    private void Start()
+    {
+        gameInput.OnInteractAction += GameInput_OnInteractAction;
+    }
 
     private void Update()
     {
         HandleMovement();
-        HandleInteractions();
+        //HandleInteractions();
 
     }
+
+    private void GameInput_OnInteractAction(object sender, System.EventArgs e)
+    {
+        Vector2 inputVector = gameInput.GetMovementVectorNormalized();
+
+        Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
+        if (moveDir != Vector3.zero)
+        {
+            lastInteractDir = moveDir;
+        }
+        //HandleMovement에 있는거랑 똑같지만 HandleMovement는 moveDir를 직접 수정하기 때문에 따로 쓰고
+        //이 친구는 벽에 머리를 박아도 방향을 그대로 유지해야 하므로 따로 지역변수로 사용함
+
+        float interactDistance = 2f;
+
+        if (Physics.Raycast(transform.position, lastInteractDir, out RaycastHit raycastHit, interactDistance, counterMask))
+        {
+            if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
+            {
+                //HasComponent
+                clearCounter.Interact();
+            }
+        }
+        else
+        {
+            //Debug.Log("-");
+        }
+    }
+
+   
 
     public bool IsWalking()
     {
@@ -43,15 +76,11 @@ public class Player : MonoBehaviour
 
         float interactDistance = 2f;
 
-
-
-
         if (Physics.Raycast(transform.position, lastInteractDir, out RaycastHit raycastHit, interactDistance, counterMask))
         {
             if(raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
             {
-                //HasComponent
-                clearCounter.Interact();
+                //clearCounter.Interact();
             }
         }
         else
@@ -66,7 +95,10 @@ public class Player : MonoBehaviour
         Vector2 inputVector = gameInput.GetMovementVectorNormalized();
 
         Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
-
+        if (moveDir != Vector3.zero)
+        {
+            lastInteractDir = moveDir;
+        }
         float moveDistance = moveSpeed * Time.deltaTime;
         float playerRadius = .7f;
         float playerHeight = 2f;
