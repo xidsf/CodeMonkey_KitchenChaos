@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -5,6 +6,14 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    public static Player Instance {  get; private set; }
+    public event EventHandler<OnSelectedCounterChangedEventArgs> OnSelectedCounterChanged;
+
+    public class OnSelectedCounterChangedEventArgs : EventArgs
+    {
+        public ClearCounter selectedCounter;
+    }
+
     [SerializeField]
     private float moveSpeed;
     [SerializeField]
@@ -14,6 +23,16 @@ public class Player : MonoBehaviour
 
     private bool isWalking;
     private Vector3 lastInteractDir;
+    private ClearCounter selectedCounter;
+
+    private void Awake()
+    {
+        if(Instance != null)
+        {
+            Debug.LogError("player가 1명 이상 있음");
+        }
+        Instance = this;
+    }
 
     private void Start()
     {
@@ -23,39 +42,17 @@ public class Player : MonoBehaviour
     private void Update()
     {
         HandleMovement();
-        //HandleInteractions();
+        HandleInteractions();
 
     }
 
     private void GameInput_OnInteractAction(object sender, System.EventArgs e)
     {
-        Vector2 inputVector = gameInput.GetMovementVectorNormalized();
-
-        Vector3 moveDir = new Vector3(inputVector.x, 0, inputVector.y);
-        if (moveDir != Vector3.zero)
+        if(selectedCounter != null)
         {
-            lastInteractDir = moveDir;
-        }
-        //HandleMovement에 있는거랑 똑같지만 HandleMovement는 moveDir를 직접 수정하기 때문에 따로 쓰고
-        //이 친구는 벽에 머리를 박아도 방향을 그대로 유지해야 하므로 따로 지역변수로 사용함
-
-        float interactDistance = 2f;
-
-        if (Physics.Raycast(transform.position, lastInteractDir, out RaycastHit raycastHit, interactDistance, counterMask))
-        {
-            if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
-            {
-                //HasComponent
-                clearCounter.Interact();
-            }
-        }
-        else
-        {
-            //Debug.Log("-");
+            selectedCounter.Interact();
         }
     }
-
-   
 
     public bool IsWalking()
     {
@@ -80,14 +77,21 @@ public class Player : MonoBehaviour
         {
             if(raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
             {
-                //clearCounter.Interact();
+                if(selectedCounter != clearCounter)
+                {
+                    SetSelectedCounter(clearCounter);
+                }
+            }
+            else
+            {
+                SetSelectedCounter(null);
             }
         }
         else
         {
-            //Debug.Log("-");
+            SetSelectedCounter(null);
         }
-
+        Debug.Log(selectedCounter);
     }
 
     private void HandleMovement()
@@ -136,4 +140,13 @@ public class Player : MonoBehaviour
         transform.forward = Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * rotateSpeed);
     }
 
+
+    private void SetSelectedCounter(ClearCounter selectedCounter)
+    {
+        this.selectedCounter = selectedCounter;
+        OnSelectedCounterChanged?.Invoke(this, new OnSelectedCounterChangedEventArgs
+        {
+            selectedCounter = selectedCounter
+        });
+    }
 }
